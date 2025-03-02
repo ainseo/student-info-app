@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학생 정보 확인 시스템</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -58,11 +59,67 @@
             border-radius: 5px;
             background: #fff;
         }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input {
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status-error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .status-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .status-loading {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+        .verification-status {
+            font-weight: bold;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>학생 정보 확인 시스템</h1>
+        
+        <div id="status-container" class="hidden status-message"></div>
 
         <div class="nav-tabs">
             <div class="nav-tab active" data-tab="student-login">학생 모드</div>
@@ -75,15 +132,17 @@
                 <label for="student-id">학번</label>
                 <input type="text" id="student-id" required>
                 <label for="phone-last4">휴대폰 뒷자리 4자리</label>
-                <input type="text" id="phone-last4" maxlength="4" required>
-                <button type="submit">로그인</button>
+                <input type="password" id="phone-last4" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required>
+                <button type="submit" id="student-submit-btn">로그인</button>
             </form>
         </div>
 
         <div class="card hidden tab-content" id="student-info">
             <h2>학생 정보 확인</h2>
             <div id="info-container"></div>
+            <div id="verification-status" class="verification-status hidden"></div>
             <button id="submit-verification">확인 완료</button>
+            <button id="student-logout">로그아웃</button>
         </div>
 
         <div class="card tab-content hidden" id="teacher-login">
@@ -91,78 +150,383 @@
             <form id="teacher-login-form">
                 <label for="teacher-password">비밀번호</label>
                 <input type="password" id="teacher-password" required>
-                <button type="submit">로그인</button>
+                <button type="submit" id="teacher-submit-btn">로그인</button>
             </form>
         </div>
 
         <div class="card hidden tab-content" id="teacher-panel">
             <h2>학생 정보 관리</h2>
+            <div>
+                <input type="text" id="teacher-search" placeholder="학생 검색 (이름 또는 학번)">
+            </div>
             <div id="teacher-info-container"></div>
+            <button id="teacher-logout">로그아웃</button>
         </div>
     </div>
 
     <script>
-        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec";
-        const TEACHER_PASSWORD = "sai4119";
+        // 구성 및 상태 변수
+        const API_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec";
+        const TEACHER_PASSWORD_HASH = "5f4dcc3b5aa765d61d8327deb882cf99"; // 해시된 비밀번호 (예시)
+        
+        let isDataLoaded = false;
         let studentsData = [];
+        let currentStudentData = null;
 
-        async function loadStudentsData() {
-            try {
-                const response = await fetch(GOOGLE_SHEETS_URL);
-                studentsData = await response.json();
-                console.log("불러온 학생 데이터:", studentsData);
-            } catch (error) {
-                console.error("데이터 불러오기 오류:", error);
+        // 상태 메시지 표시 함수
+        function showStatus(message, type = 'info') {
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.textContent = message;
+            statusContainer.className = `status-message status-${type}`;
+            statusContainer.classList.remove('hidden');
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusContainer.classList.add('hidden');
+                }, 5000);
             }
         }
 
-        document.getElementById("student-login-form").addEventListener("submit", function(e) {
+        // 비밀번호 해시 함수 (MD5 - 실제 구현에서는 더 강력한 해시 알고리즘 사용 권장)
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        // 학생 데이터 로드 함수
+        async function loadStudentsData() {
+            try {
+                showStatus('데이터를 불러오는 중입니다...', 'loading');
+                
+                const response = await fetch(API_URL + "?action=getStudents", {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                studentsData = data.students || [];
+                isDataLoaded = true;
+                showStatus('데이터 로드 완료', 'success');
+                return true;
+            } catch (error) {
+                console.error("데이터 불러오기 오류:", error);
+                showStatus(`데이터를 불러올 수 없습니다: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 학생 정보 인증 함수
+        async function verifyStudent(studentId, phoneLast4) {
+            if (!isDataLoaded) {
+                const loaded = await loadStudentsData();
+                if (!loaded) return null;
+            }
+
+            try {
+                // 서버에 인증 요청 (백엔드 검증 방식으로 변경)
+                const response = await fetch(API_URL + "?action=verifyStudent", {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        phoneLast4: phoneLast4
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                return data.student || null;
+            } catch (error) {
+                console.error("학생 인증 오류:", error);
+                showStatus(`인증 오류: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // 확인 완료 제출 함수
+        async function submitVerification(studentId) {
+            try {
+                showStatus('확인 내용을 저장 중입니다...', 'loading');
+                
+                const response = await fetch(API_URL + "?action=saveVerification", {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                const verificationStatus = document.getElementById('verification-status');
+                verificationStatus.textContent = `확인 완료: ${new Date().toLocaleString()}`;
+                verificationStatus.classList.remove('hidden');
+                
+                showStatus('확인이 성공적으로 저장되었습니다.', 'success');
+                return true;
+            } catch (error) {
+                console.error("확인 저장 오류:", error);
+                showStatus(`확인 저장 오류: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 학생 정보 표시 함수
+        function displayStudentData(student) {
+            currentStudentData = student;
+            const container = document.getElementById("info-container");
+            
+            // 민감한 정보는 일부만 표시
+            const maskedPhone = student.휴대폰번호 ? 
+                student.휴대폰번호.replace(/(\d{3})-(\d{3,4})-(\d{4})/, '$1-$2-****') : 
+                '정보 없음';
+            
+            container.innerHTML = `
+                <p><strong>학번:</strong> ${student.학번}</p>
+                <p><strong>이름:</strong> ${student.이름}</p>
+                <p><strong>휴대폰 번호:</strong> ${maskedPhone}</p>
+            `;
+            
+            // 이미 확인한 경우 상태 표시
+            if (student.확인여부 && student.확인시간) {
+                const verificationStatus = document.getElementById('verification-status');
+                verificationStatus.textContent = `확인 완료: ${new Date(student.확인시간).toLocaleString()}`;
+                verificationStatus.classList.remove('hidden');
+            } else {
+                document.getElementById('verification-status').classList.add('hidden');
+            }
+        }
+
+        // 교사 패널 표시 함수
+        function displayTeacherPanel(students) {
+            const container = document.getElementById("teacher-info-container");
+            
+            if (!students || students.length === 0) {
+                container.innerHTML = '<p>등록된 학생 정보가 없습니다.</p>';
+                return;
+            }
+            
+            // 학생 목록 테이블 생성
+            let tableHTML = `
+                <table style="width:100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">학번</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">이름</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">확인 상태</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">확인 시간</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            students.forEach(student => {
+                const verificationStatus = student.확인여부 ? '완료' : '미확인';
+                const verificationTime = student.확인시간 ? new Date(student.확인시간).toLocaleString() : '-';
+                
+                tableHTML += `
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${student.학번}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${student.이름}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${verificationStatus}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${verificationTime}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+
+        // 교사 검색 기능
+        document.getElementById("teacher-search").addEventListener("input", function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            if (!searchTerm) {
+                displayTeacherPanel(studentsData);
+                return;
+            }
+            
+            const filteredStudents = studentsData.filter(student => 
+                student.이름.toLowerCase().includes(searchTerm) || 
+                String(student.학번).includes(searchTerm)
+            );
+            
+            displayTeacherPanel(filteredStudents);
+        });
+
+        // 학생 로그인 처리
+        document.getElementById("student-login-form").addEventListener("submit", async function(e) {
             e.preventDefault();
+            
+            const studentSubmitBtn = document.getElementById("student-submit-btn");
+            studentSubmitBtn.disabled = true;
+            studentSubmitBtn.textContent = "처리 중...";
+            
             const studentIdInput = document.getElementById("student-id").value.trim();
             const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
-
-            const student = studentsData.find(s => 
-                String(s.학번).trim() === studentIdInput && 
-                String(s.휴대폰뒷자리).trim() === phoneLastDigitsInput
-            );
-
+            
+            if (!studentIdInput || !phoneLastDigitsInput) {
+                showStatus('학번과 휴대폰 뒷자리를 모두 입력해주세요.', 'error');
+                studentSubmitBtn.disabled = false;
+                studentSubmitBtn.textContent = "로그인";
+                return;
+            }
+            
+            const student = await verifyStudent(studentIdInput, phoneLastDigitsInput);
+            
             if (student) {
                 displayStudentData(student);
                 document.getElementById("student-login").classList.add("hidden");
                 document.getElementById("student-info").classList.remove("hidden");
+                showStatus(`${student.이름} 학생 정보가 확인되었습니다.`, 'success');
             } else {
-                alert("학생 정보를 찾을 수 없습니다.");
+                showStatus('일치하는 학생 정보를 찾을 수 없습니다.', 'error');
             }
+            
+            studentSubmitBtn.disabled = false;
+            studentSubmitBtn.textContent = "로그인";
         });
 
-        function displayStudentData(student) {
-            const container = document.getElementById("info-container");
-            container.innerHTML = `
-                <p><strong>학번:</strong> ${student.학번}</p>
-                <p><strong>이름:</strong> ${student.이름}</p>
-                <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
-            `;
-        }
-
-        document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
+        // 교사 로그인 처리
+        document.getElementById("teacher-login-form").addEventListener("submit", async function(e) {
             e.preventDefault();
+            
+            const teacherSubmitBtn = document.getElementById("teacher-submit-btn");
+            teacherSubmitBtn.disabled = true;
+            teacherSubmitBtn.textContent = "처리 중...";
+            
             const password = document.getElementById("teacher-password").value;
-            if (password === TEACHER_PASSWORD) {
-                document.getElementById("teacher-login").classList.add("hidden");
-                document.getElementById("teacher-panel").classList.remove("hidden");
-                displayTeacherPanel();
-            } else {
-                alert("비밀번호가 올바르지 않습니다.");
+            
+            try {
+                // 실제 서버 인증으로 대체하는 것이 더 안전함
+                const passwordHash = await hashPassword(password);
+                
+                // 서버 인증 요청 (백엔드 검증 방식으로 변경)
+                const response = await fetch(API_URL + "?action=verifyTeacher", {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        passwordHash: passwordHash
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.success) {
+                    if (!isDataLoaded) {
+                        await loadStudentsData();
+                    }
+                    
+                    document.getElementById("teacher-login").classList.add("hidden");
+                    document.getElementById("teacher-panel").classList.remove("hidden");
+                    displayTeacherPanel(studentsData);
+                    showStatus('교사 로그인 성공', 'success');
+                } else {
+                    showStatus('비밀번호가 올바르지 않습니다.', 'error');
+                }
+            } catch (error) {
+                console.error("교사 로그인 오류:", error);
+                showStatus(`로그인 오류: ${error.message}`, 'error');
+            }
+            
+            teacherSubmitBtn.disabled = false;
+            teacherSubmitBtn.textContent = "로그인";
+        });
+
+        // 확인 완료 버튼 처리
+        document.getElementById("submit-verification").addEventListener("click", async function() {
+            if (!currentStudentData) {
+                showStatus('학생 정보가 없습니다.', 'error');
+                return;
+            }
+            
+            this.disabled = true;
+            this.textContent = "처리 중...";
+            
+            const success = await submitVerification(currentStudentData.학번);
+            
+            this.disabled = false;
+            this.textContent = "확인 완료";
+            
+            if (success) {
+                currentStudentData.확인여부 = true;
+                currentStudentData.확인시간 = new Date().toISOString();
             }
         });
 
-        function displayTeacherPanel() {
-            const container = document.getElementById("teacher-info-container");
-            container.innerHTML = studentsData.map(s => `
-                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
-            `).join("");
-        }
+        // 학생 로그아웃
+        document.getElementById("student-logout").addEventListener("click", function() {
+            currentStudentData = null;
+            document.getElementById("student-info").classList.add("hidden");
+            document.getElementById("student-login").classList.remove("hidden");
+            document.getElementById("student-id").value = "";
+            document.getElementById("phone-last4").value = "";
+        });
 
+        // 교사 로그아웃
+        document.getElementById("teacher-logout").addEventListener("click", function() {
+            document.getElementById("teacher-panel").classList.add("hidden");
+            document.getElementById("teacher-login").classList.remove("hidden");
+            document.getElementById("teacher-password").value = "";
+            document.getElementById("teacher-search").value = "";
+        });
+
+        // 탭 전환
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -173,7 +537,8 @@
             });
         });
 
-        loadStudentsData();
+        // 페이지 로드 시 데이터 가져오기
+        window.addEventListener('load', loadStudentsData);
     </script>
 </body>
 </html>
