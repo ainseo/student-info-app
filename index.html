@@ -23,7 +23,7 @@
             padding: 20px;
             margin-bottom: 20px;
         }
-        h1, h2, h3 {
+        h1, h2 {
             color: #333;
         }
         .form-group {
@@ -56,14 +56,37 @@
         .hidden {
             display: none;
         }
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .nav-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        .nav-tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom-color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>학생 정보 확인 시스템</h1>
 
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="student-login">학생 모드</div>
+            <div class="nav-tab" data-tab="teacher-login">교사 모드</div>
+        </div>
+
         <!-- 학생 로그인 -->
-        <div id="student-login" class="card">
+        <div id="student-login" class="tab-content active card">
             <h2>학생 로그인</h2>
             <form id="student-login-form">
                 <div class="form-group">
@@ -74,20 +97,40 @@
                     <label for="phone-last4">휴대폰 뒷자리 4자리</label>
                     <input type="text" id="phone-last4" maxlength="4" required>
                 </div>
-                <button type="submit">확인</button>
+                <button type="submit">로그인</button>
             </form>
         </div>
 
         <!-- 학생 정보 확인 -->
-        <div id="student-info" class="card hidden">
+        <div id="student-info" class="tab-content card hidden">
             <h2>학생 정보 확인</h2>
             <div id="info-container"></div>
             <button id="submit-verification">확인 완료</button>
         </div>
+
+        <!-- 교사 로그인 -->
+        <div id="teacher-login" class="tab-content card hidden">
+            <h2>교사 로그인</h2>
+            <form id="teacher-login-form">
+                <div class="form-group">
+                    <label for="teacher-password">비밀번호</label>
+                    <input type="password" id="teacher-password" required>
+                </div>
+                <button type="submit">로그인</button>
+            </form>
+        </div>
+
+        <!-- 교사 모드 -->
+        <div id="teacher-panel" class="tab-content card hidden">
+            <h2>학생 정보 관리</h2>
+            <p>현재 학생 정보</p>
+            <div id="teacher-info-container"></div>
+        </div>
     </div>
 
     <script>
-        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec"; // 🔹 배포한 Google Apps Script URL 넣기
+        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec"; // 🔹 배포된 Google Apps Script URL
+        const TEACHER_PASSWORD = "sai4119";
 
         let studentsData = [];
 
@@ -115,7 +158,7 @@
                 document.getElementById("student-login").classList.add("hidden");
                 document.getElementById("student-info").classList.remove("hidden");
             } else {
-                alert("학생 정보를 찾을 수 없습니다. 학번과 휴대폰 뒷자리를 확인하세요.");
+                alert("학생 정보를 찾을 수 없습니다.");
             }
         });
 
@@ -126,19 +169,32 @@
                 <p><strong>학번:</strong> ${student.학번}</p>
                 <p><strong>이름:</strong> ${student.이름}</p>
                 <p><strong>생년월일:</strong> ${student.생년월일}</p>
-                <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
-                <p><strong>보호자 번호:</strong> ${student.보호자휴대폰}</p>
-                <p><strong>주소:</strong> ${student.주소}</p>
             `;
         }
 
-        // 확인 완료 버튼 클릭 시 Google Sheets에 저장
-        document.getElementById("submit-verification").addEventListener("click", function() {
-            alert("정보 확인이 완료되었습니다.");
-            location.reload();
+        // 교사 로그인 기능
+        document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const password = document.getElementById("teacher-password").value;
+
+            if (password === TEACHER_PASSWORD) {
+                document.getElementById("teacher-login").classList.add("hidden");
+                document.getElementById("teacher-panel").classList.remove("hidden");
+                displayTeacherPanel();
+            } else {
+                alert("비밀번호가 올바르지 않습니다.");
+            }
         });
 
-        // 페이지 로드 시 학생 데이터 불러오기
+        // 교사 패널에 학생 정보 표시
+        function displayTeacherPanel() {
+            const container = document.getElementById("teacher-info-container");
+            container.innerHTML = studentsData.map(s => `
+                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
+            `).join("");
+        }
+
+        // 페이지 로드 시 데이터 불러오기
         loadStudentsData();
     </script>
 </body>
