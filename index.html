@@ -31,13 +31,17 @@
         }
         .info-row {
             display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fff;
         }
         .info-label {
-            flex: 1;
             font-weight: bold;
+            flex: 1;
         }
         .info-value {
             flex: 2;
@@ -52,9 +56,11 @@
         }
         .check-buttons .correct {
             background-color: #4CAF50;
+            color: white;
         }
         .check-buttons .incorrect {
             background-color: #f44336;
+            color: white;
         }
         .correct-info-input {
             margin-top: 10px;
@@ -107,6 +113,7 @@
             try {
                 const response = await fetch(GOOGLE_SHEETS_URL);
                 studentsData = await response.json();
+                console.log("불러온 학생 데이터:", studentsData);
             } catch (error) {
                 console.error("데이터 불러오기 오류:", error);
             }
@@ -117,7 +124,10 @@
             const studentIdInput = document.getElementById("student-id").value.trim();
             const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
 
-            const student = studentsData.find(s => String(s.학번).trim() === studentIdInput && String(s.휴대폰뒷자리).trim() === phoneLastDigitsInput);
+            const student = studentsData.find(s => 
+                String(s.학번).trim() === studentIdInput && 
+                String(s.휴대폰뒷자리).trim() === phoneLastDigitsInput
+            );
 
             if (student) {
                 displayStudentData(student);
@@ -179,10 +189,6 @@
                 });
             });
         }
-
-        document.getElementById("submit-verification").addEventListener("click", function() {
-            alert("확인 완료! (데이터 저장 기능 추가 필요)");
-        });
 
         document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
