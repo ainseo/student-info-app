@@ -81,6 +81,7 @@
     .tab-content.active {
       display: block;
     }
+    /* 학생 정보 확인/수정 UI */
     .info-row {
       display: flex;
       margin-bottom: 10px;
@@ -110,6 +111,11 @@
       background-color: #f44336;
       color: white;
     }
+    .correct-info-input {
+      margin-top: 10px;
+      display: none;
+    }
+    /* 교사 모드 표 스타일 */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -158,7 +164,7 @@
       </div>
       <div class="card hidden" id="student-info-container">
         <h2>학생 정보 확인</h2>
-        <p>아래 정보가 올바른지 확인해주세요. 잘못된 정보가 있다면 '틀림' 버튼을 눌러 수정해주세요.</p>
+        <p>아래 정보가 올바른지 확인해주세요. 잘못된 정보가 있다면 'X' 버튼을 눌러 수정해주세요.</p>
         <div id="student-info"></div>
         <button id="submit-verification" class="hidden">확인 완료</button>
       </div>
@@ -284,20 +290,19 @@
       }
     }
 
-    /* 학생 로그인 처리 - 여기가 핵심 수정 부분! */
+    /* 학생 로그인 처리 */
     document.getElementById('student-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
       const studentIdInput = document.getElementById('student-id').value.trim();
       const phoneLastDigitsInput = document.getElementById('phone-last4').value.trim();
 
-      /* studentId와 phoneLastDigits 모두 문자열로 변환해서 비교 */
+      // studentId, phoneLastDigits 모두 문자열 변환 후 비교
       const student = studentsData.find(s =>
         String(s.studentId) === studentIdInput && 
         String(s.phoneLastDigits) === phoneLastDigitsInput
       );
 
       if (student) {
-        // 로그인 성공
         displayStudentInfo(student);
         document.getElementById('student-login-container').classList.add('hidden');
         document.getElementById('student-info-container').classList.remove('hidden');
@@ -326,12 +331,13 @@
         const row = document.createElement('div');
         row.className = 'info-row';
         row.dataset.field = field.key;
+
         row.innerHTML = `
           <div class="info-label">${field.label}</div>
           <div class="info-value">${student[field.key] || ''}</div>
           <div class="check-buttons">
-            <button class="correct">맞음</button>
-            <button class="incorrect">틀림</button>
+            <button class="correct">O</button>   <!-- 맞음 -> O -->
+            <button class="incorrect">X</button> <!-- 틀림 -> X -->
           </div>
           <div class="correct-info-input hidden">
             <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
@@ -343,14 +349,24 @@
 
       document.getElementById('submit-verification').classList.remove('hidden');
 
-      // "틀림" 버튼 -> 수정 입력 필드 표시
+      // "X" 버튼 -> 수정 입력 필드 표시
       container.querySelectorAll('.incorrect').forEach(btn => {
         btn.addEventListener('click', function() {
-          this.closest('.info-row').querySelector('.correct-info-input').classList.remove('hidden');
+          const row = this.closest('.info-row');
+          row.querySelector('.correct-info-input').classList.remove('hidden');
         });
       });
 
-      // "확인" 버튼 -> 수정사항 저장 (로컬)
+      // "O" 버튼 -> markAsCorrect()
+      container.querySelectorAll('.correct').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const row = this.closest('.info-row');
+          const fieldName = row.dataset.field;
+          markAsCorrect(fieldName);
+        });
+      });
+
+      // 수정 입력 확인 버튼 -> 로컬 데이터에 corrections 반영
       container.querySelectorAll('.submit-correction').forEach(btn => {
         btn.addEventListener('click', function() {
           const fieldName = this.dataset.field;
@@ -371,11 +387,11 @@
         });
       });
 
-      // "확인 완료" 버튼 -> (옵션) Google Sheets 업데이트
-      document.getElementById('submit-verification').addEventListener('click', function() {
-        // 모든 항목이 맞음/틀림 처리되었는지
+      // "확인 완료" 버튼
+      document.getElementById('submit-verification').onclick = function() {
         const allVerified = fields.every(f => {
           const row = container.querySelector(`.info-row[data-field="${f.key}"]`);
+          // O/X 버튼 중 O버튼이 disabled 되었다면 확인됨
           return row.querySelectorAll('.check-buttons button')[0].disabled;
         });
         if (allVerified) {
@@ -384,12 +400,23 @@
           document.getElementById('student-info-container').classList.add('hidden');
           document.getElementById('student-login-form').reset();
         } else {
-          alert('모든 정보에 대해 맞음/틀림을 확인해주세요.');
+          alert('모든 정보에 대해 O/X를 선택해주세요.');
         }
-      });
+      };
     }
 
-    /* 교사 모드: 전체 학생 목록 표로 표시 */
+    // "O" 버튼 클릭 시 동작
+    function markAsCorrect(fieldName) {
+      const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+      // O/X 버튼 모두 비활성화
+      row.querySelectorAll('.check-buttons button').forEach(btn => {
+        btn.disabled = true;
+      });
+      // "(확인됨)" 표시 추가
+      row.querySelector('.info-value').textContent += ' (확인됨)';
+    }
+
+    // 교사 모드: 전체 학생 목록 표로 표시
     function displayTeacherPanel() {
       const container = document.getElementById('teacher-info');
       let html = `
@@ -439,7 +466,7 @@
       updateVerificationStatus();
     }
 
-    /* 교사 모드: verification-status 테이블도 갱신 */
+    /* 교사 모드: verification-status 테이블 갱신 */
     function updateVerificationStatus() {
       const tbody = document.querySelector('#verification-status tbody');
       if (!tbody) return;
