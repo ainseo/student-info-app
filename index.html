@@ -13,45 +13,137 @@
         }
     }
 
-    // ✅ 학생 로그인 로직 수정 (학번 + 휴대폰 뒷자리 직접 비교)
     document.getElementById("student-login-form").addEventListener("submit", function(e) {
         e.preventDefault();
         const studentIdInput = document.getElementById("student-id").value.trim();
         const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
 
-        console.log("입력한 학번:", studentIdInput);
-        console.log("입력한 휴대폰 뒷자리:", phoneLastDigitsInput);
-
         const student = studentsData.find(s => {
-            const dbId = String(s.학번).trim();
-            const dbPhoneLast4 = String(s.휴대폰뒷자리).trim(); // 🔹 휴대폰 뒷자리 열을 직접 가져옴
-            console.log("DB 학번:", dbId, "DB 휴대폰 뒷자리:", dbPhoneLast4);
-            return dbId === studentIdInput && dbPhoneLast4 === phoneLastDigitsInput;
+            return String(s.학번).trim() === studentIdInput && String(s.휴대폰뒷자리).trim() === phoneLastDigitsInput;
         });
 
         if (student) {
-            console.log("로그인 성공:", student);
             displayStudentData(student);
             document.getElementById("student-login").classList.add("hidden");
             document.getElementById("student-info").classList.remove("hidden");
         } else {
-            console.log("로그인 실패: 학생 정보를 찾을 수 없음");
-            alert("학생 정보를 찾을 수 없습니다. 학번과 휴대폰 뒷자리를 확인하세요.");
+            alert("학생 정보를 찾을 수 없습니다.");
         }
     });
 
     function displayStudentData(student) {
         const container = document.getElementById("info-container");
-        container.innerHTML = `
-            <p><strong>학번:</strong> ${student.학번}</p>
-            <p><strong>이름:</strong> ${student.이름}</p>
-            <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
-        `;
+        container.innerHTML = "";
+
+        const fields = [
+            { key: "이름", label: "이름" },
+            { key: "생년월일", label: "생년월일" },
+            { key: "휴대폰번호", label: "휴대폰 번호" },
+            { key: "보호자휴대폰", label: "보호자 휴대폰 번호" },
+            { key: "주소", label: "주소" },
+            { key: "리로스쿨아이디", label: "리로스쿨 아이디" },
+            { key: "리로스쿨비밀번호", label: "리로스쿨 비밀번호" }
+        ];
+
+        fields.forEach(field => {
+            const row = document.createElement("div");
+            row.className = "info-row";
+            row.dataset.field = field.key;
+
+            const label = document.createElement("div");
+            label.className = "info-label";
+            label.textContent = field.label;
+
+            const value = document.createElement("div");
+            value.className = "info-value";
+            value.textContent = student[field.key];
+
+            const checkButtons = document.createElement("div");
+            checkButtons.className = "check-buttons";
+
+            const correctBtn = document.createElement("button");
+            correctBtn.textContent = "맞음";
+            correctBtn.className = "correct";
+            correctBtn.onclick = () => markAsCorrect(field.key);
+
+            const incorrectBtn = document.createElement("button");
+            incorrectBtn.textContent = "틀림";
+            incorrectBtn.className = "incorrect";
+            incorrectBtn.onclick = () => markAsIncorrect(field.key, student.학번);
+
+            checkButtons.appendChild(correctBtn);
+            checkButtons.appendChild(incorrectBtn);
+
+            row.appendChild(label);
+            row.appendChild(value);
+            row.appendChild(checkButtons);
+
+            const correctionInput = document.createElement("div");
+            correctionInput.className = "correct-info-input";
+            correctionInput.innerHTML = `
+                <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
+                <button class="submit-correction" data-field="${field.key}">확인</button>
+            `;
+            row.appendChild(correctionInput);
+
+            container.appendChild(row);
+        });
+
+        document.getElementById("submit-verification").classList.remove("hidden");
+
+        document.querySelectorAll(".submit-correction").forEach(button => {
+            button.addEventListener("click", function() {
+                const fieldName = this.dataset.field;
+                const correctionValue = document.getElementById(`correction-${fieldName}`).value.trim();
+
+                if (correctionValue !== "") {
+                    student[fieldName] = correctionValue;
+                    const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+                    row.querySelector(".info-value").textContent = correctionValue + " (수정됨)";
+                    row.querySelector(".correct-info-input").style.display = "none";
+                    row.querySelectorAll(".check-buttons button").forEach(btn => btn.disabled = true);
+                }
+            });
+        });
+
+        document.getElementById("submit-verification").addEventListener("click", function() {
+            saveStudentData(student);
+        });
+    }
+
+    function markAsCorrect(fieldName) {
+        const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+        row.querySelectorAll(".check-buttons button").forEach(btn => btn.disabled = true);
+        row.querySelector(".info-value").textContent += " (확인됨)";
+    }
+
+    function markAsIncorrect(fieldName, studentId) {
+        const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+        row.querySelector(".correct-info-input").style.display = "block";
+    }
+
+    async function saveStudentData(student) {
+        try {
+            const response = await fetch(GOOGLE_SHEETS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(student)
+            });
+
+            if (await response.text() === "success") {
+                alert("학생 정보가 저장되었습니다!");
+            } else {
+                alert("저장 실패! 다시 시도하세요.");
+            }
+        } catch (error) {
+            console.error("데이터 저장 오류:", error);
+        }
     }
 
     document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
         e.preventDefault();
         const password = document.getElementById("teacher-password").value;
+
         if (password === TEACHER_PASSWORD) {
             document.getElementById("teacher-login").classList.add("hidden");
             document.getElementById("teacher-panel").classList.remove("hidden");
@@ -64,16 +156,16 @@
     function displayTeacherPanel() {
         const container = document.getElementById("teacher-info-container");
         container.innerHTML = studentsData.map(s => `
-            <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름} | <strong>휴대폰 뒷자리:</strong> ${s.휴대폰뒷자리}</p>
+            <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
         `).join("");
     }
 
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
+            this.classList.add('active");
 
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add("hidden"));
             document.getElementById(this.dataset.tab).classList.remove("hidden");
         });
     });
