@@ -526,4 +526,32 @@
               name: String(row[headers.indexOf('이름')]),
               birthdate: String(row[headers.indexOf('생년월일')]),
               phone: String(row[headers.indexOf('휴대폰번호')]),
-              phoneLastDigits: String(row[headers.indexOf('휴대폰 뒷자리')
+              phoneLastDigits: String(row[headers.indexOf('휴대폰 뒷자리')]),
+              parentPhone: String(row[headers.indexOf('보호자 휴대폰')]),
+              address: String(row[headers.indexOf('주소')]),
+              liroId: String(row[headers.indexOf('리로스쿨 아이디')]),
+              liroPassword: String(row[headers.indexOf('리로스쿨 비밀번호')]),
+              verified: false,
+              corrections: {}
+            });
+          }
+          if (newData.length === 0) {
+            alert('유효한 학생 데이터가 없습니다.');
+            return;
+          }
+          alert(`${newData.length}명의 학생 정보가 업로드되었습니다.`);
+          loadStudentsData();
+          updateVerificationStatus();
+        } catch (error) {
+          console.error(error);
+          alert('파일 처리 중 오류 발생');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 페이지 로드 시 데이터 불러오기
+    loadStudentsData();
+  </script>
+</body>
+</html>
