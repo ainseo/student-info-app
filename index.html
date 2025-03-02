@@ -123,18 +123,16 @@
         <!-- 교사 모드 -->
         <div id="teacher-panel" class="tab-content card hidden">
             <h2>학생 정보 관리</h2>
-            <p>현재 학생 정보</p>
             <div id="teacher-info-container"></div>
         </div>
     </div>
 
     <script>
-        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec"; // 🔹 배포된 Google Apps Script URL
+        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec"; // 🔹 Google Apps Script URL
         const TEACHER_PASSWORD = "sai4119";
 
         let studentsData = [];
 
-        // Google Sheets에서 학생 데이터 불러오기
         async function loadStudentsData() {
             try {
                 const response = await fetch(GOOGLE_SHEETS_URL);
@@ -145,13 +143,12 @@
             }
         }
 
-        // 학생 로그인 기능 (학번 + 휴대폰 뒷자리 확인)
         document.getElementById("student-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
             const studentId = document.getElementById("student-id").value;
             const phoneLastDigits = document.getElementById("phone-last4").value;
 
-            const student = studentsData.find(s => s.학번 === studentId && s.휴대폰번호.endsWith(phoneLastDigits));
+            const student = studentsData.find(s => s.학번 === studentId && s.휴대폰번호.slice(-4) === phoneLastDigits);
             
             if (student) {
                 displayStudentData(student);
@@ -162,17 +159,15 @@
             }
         });
 
-        // 학생 정보 화면에 표시
         function displayStudentData(student) {
             const container = document.getElementById("info-container");
             container.innerHTML = `
                 <p><strong>학번:</strong> ${student.학번}</p>
                 <p><strong>이름:</strong> ${student.이름}</p>
-                <p><strong>생년월일:</strong> ${student.생년월일}</p>
+                <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
             `;
         }
 
-        // 교사 로그인 기능
         document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
             const password = document.getElementById("teacher-password").value;
@@ -180,21 +175,11 @@
             if (password === TEACHER_PASSWORD) {
                 document.getElementById("teacher-login").classList.add("hidden");
                 document.getElementById("teacher-panel").classList.remove("hidden");
-                displayTeacherPanel();
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
             }
         });
 
-        // 교사 패널에 학생 정보 표시
-        function displayTeacherPanel() {
-            const container = document.getElementById("teacher-info-container");
-            container.innerHTML = studentsData.map(s => `
-                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
-            `).join("");
-        }
-
-        // 페이지 로드 시 데이터 불러오기
         loadStudentsData();
     </script>
 </body>
