@@ -225,7 +225,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // 학생 데이터 저장소 (실제로는 서버에 저장되어야 함)
+        // =====================================================================
+        // 이 부분에 실제 학생 데이터를 넣으세요. 학생 수에 제한은 없습니다.
+        // =====================================================================
         let studentsData = [
             {
                 studentId: "20230001",
@@ -250,6 +252,20 @@
                 address: "서울시 서초구 반포대로 456",
                 liroId: "kim2005",
                 liroPassword: "pass5678",
+                verified: false,
+                corrections: {}
+            },
+            // 여기에 더 많은 학생 데이터를 추가할 수 있습니다
+            {
+                studentId: "20230003",
+                phoneLastDigits: "9012",
+                name: "이영희",
+                birthdate: "2005-05-10",
+                phone: "010-9012-9012",
+                parentPhone: "010-3333-4444",
+                address: "서울시 마포구 와우산로 789",
+                liroId: "lee2005",
+                liroPassword: "pass9012",
                 verified: false,
                 corrections: {}
             }
@@ -367,10 +383,10 @@
                 // 수정 입력 필드 (기본적으로 숨김)
                 const correctionInput = document.createElement('div');
                 correctionInput.className = 'correct-info-input';
-                correctionInput.innerHTML = 
+                correctionInput.innerHTML = `
                     <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label}을(를) 입력하세요">
                     <button class="submit-correction" data-field="${field.key}">확인</button>
-                ;
+                `;
                 row.appendChild(correctionInput);
                 
                 container.appendChild(row);
@@ -383,7 +399,7 @@
             document.querySelectorAll('.submit-correction').forEach(button => {
                 button.addEventListener('click', function() {
                     const fieldName = this.dataset.field;
-                    const correctionValue = document.getElementById(correction-${fieldName}).value;
+                    const correctionValue = document.getElementById(`correction-${fieldName}`).value;
                     
                     if (correctionValue.trim() !== '') {
                         // 학생 데이터에 수정 정보 저장
@@ -392,7 +408,7 @@
                             studentsData[studentIndex].corrections[fieldName] = correctionValue;
                             
                             // UI 업데이트
-                            const row = document.querySelector(.info-row[data-field="${fieldName}"]);
+                            const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
                             row.querySelector('.info-value').textContent = correctionValue + ' (수정됨)';
                             row.querySelector('.correct-info-input').style.display = 'none';
                             
@@ -411,7 +427,7 @@
             document.getElementById('submit-verification').addEventListener('click', function() {
                 // 모든 필드가 확인되었는지 검사
                 const allVerified = fields.every(field => {
-                    const row = document.querySelector(.info-row[data-field="${field.key}"]);
+                    const row = document.querySelector(`.info-row[data-field="${field.key}"]`);
                     return row.querySelector('.check-buttons button').disabled;
                 });
                 
@@ -436,7 +452,7 @@
         
         // 정보가 맞다고 표시하는 함수
         function markAsCorrect(fieldName) {
-            const row = document.querySelector(.info-row[data-field="${fieldName}"]);
+            const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
             
             // 버튼 비활성화
             row.querySelectorAll('.check-buttons button').forEach(btn => {
@@ -449,7 +465,7 @@
         
         // 정보가 틀리다고 표시하는 함수
         function markAsIncorrect(fieldName, studentId) {
-            const row = document.querySelector(.info-row[data-field="${fieldName}"]);
+            const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
             
             // 수정 입력 필드 표시
             row.querySelector('.correct-info-input').style.display = 'block';
@@ -490,7 +506,7 @@
                         };
                         
                         const li = document.createElement('li');
-                        li.textContent = ${fieldLabels[field]}: ${value};
+                        li.textContent = `${fieldLabels[field]}: ${value}`;
                         correctionsList.appendChild(li);
                     }
                     
@@ -552,7 +568,7 @@
                     
                     const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
                     if (missingHeaders.length > 0) {
-                        alert(필수 헤더가 누락되었습니다: ${missingHeaders.join(', ')});
+                        alert(`필수 헤더가 누락되었습니다: ${missingHeaders.join(', ')}`);
                         return;
                     }
                     
@@ -594,7 +610,7 @@
                     
                     // 데이터 업데이트
                     studentsData = newStudentsData;
-                    alert(${studentsData.length}명의 학생 정보가 업로드되었습니다.);
+                    alert(`${studentsData.length}명의 학생 정보가 업로드되었습니다.`);
                     
                     // 상태 테이블 업데이트
                     updateVerificationStatus();
