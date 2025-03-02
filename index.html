@@ -169,8 +169,7 @@
     </div>
 
     <!-- 교사 모드 -->
-    <!-- teacher-mode 컨테이너의 hidden 클래스를 제거하여 탭 전환 시 표시되도록 함 -->
-    <div id="teacher-mode" class="tab-content">
+    <div id="teacher-mode" class="tab-content hidden">
       <div id="teacher-login-container" class="card">
         <h2>교사 로그인</h2>
         <form id="teacher-login-form">
@@ -226,7 +225,7 @@
     let studentsData = [];
     let currentStudent = null;
 
-    // 탭 전환
+    /* 탭 전환 */
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', function() {
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -236,7 +235,7 @@
       });
     });
 
-    // 교사 로그인 처리
+    /* 교사 로그인 */
     document.getElementById('teacher-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
       const pwd = document.getElementById('teacher-password').value;
@@ -249,7 +248,7 @@
       }
     });
 
-    // Google Sheet URL 적용
+    /* Google Sheet URL 적용 */
     document.getElementById('apply-sheet-url').addEventListener('click', function() {
       const newUrl = document.getElementById('sheet-url').value.trim();
       if (newUrl === "" || !newUrl.startsWith("https://")) {
@@ -261,12 +260,13 @@
       loadStudentsData();
     });
 
-    // 학생 데이터 불러오기
+    /* 학생 데이터 불러오기 */
     async function loadStudentsData() {
       try {
         const response = await fetch(GOOGLE_SHEETS_URL);
         studentsData = await response.json();
         console.log("불러온 학생 데이터:", studentsData);
+        // 교사 모드 업데이트 (교사 로그인 후)
         if (!document.getElementById('teacher-login-container').classList.contains('hidden')) {
           // 아직 교사 로그인 전
         } else {
@@ -278,7 +278,7 @@
       }
     }
 
-    // 학생 로그인 처리
+    /* 학생 로그인 처리 */
     document.getElementById('student-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
       const studentIdInput = document.getElementById('student-id').value.trim();
@@ -299,7 +299,7 @@
       }
     });
 
-    // 학생 정보 표시 및 수정
+    /* 학생 정보 표시 및 수정 */
     function displayStudentInfo(student) {
       const container = document.getElementById('student-info');
       container.innerHTML = '';
@@ -319,29 +319,18 @@
         row.className = 'info-row';
         row.dataset.field = field.key;
 
-        // "O"와 "X" 버튼을 직접 생성하여 onclick 속성으로 함수 연결
-        const correctBtn = document.createElement('button');
-        correctBtn.textContent = 'O';
-        correctBtn.className = 'correct';
-        correctBtn.onclick = () => markAsCorrect(field.key);
-
-        const incorrectBtn = document.createElement('button');
-        incorrectBtn.textContent = 'X';
-        incorrectBtn.className = 'incorrect';
-        incorrectBtn.onclick = () => markAsIncorrect(field.key);
-
         row.innerHTML = `
           <div class="info-label">${field.label}</div>
           <div class="info-value">${student[field.key] || ''}</div>
-          <div class="check-buttons"></div>
+          <div class="check-buttons">
+            <button class="correct" onclick="markAsCorrectInline(this)">O</button>
+            <button class="incorrect" onclick="markAsIncorrectInline(this)">X</button>
+          </div>
           <div class="correct-info-input hidden">
             <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
             <button class="submit-correction" data-field="${field.key}">확인</button>
           </div>
         `;
-        row.querySelector('.check-buttons').appendChild(correctBtn);
-        row.querySelector('.check-buttons').appendChild(incorrectBtn);
-
         container.appendChild(row);
       });
 
@@ -369,13 +358,15 @@
         });
       });
 
-      // "확인 완료" 버튼: 최종 확인 처리 및 교사 모드 업데이트
+      // "확인 완료" 버튼: 최종 확인 처리
       document.getElementById('submit-verification').onclick = function() {
         const allVerified = fields.every(f => {
-          const row = document.querySelector(`.info-row[data-field="${f.key}"]`);
+          const row = container.querySelector(`.info-row[data-field="${f.key}"]`);
           return row.querySelector('.correct').disabled;
         });
         if (allVerified) {
+          // 최종적으로 현재 학생의 verified 상태를 업데이트
+          currentStudent.verified = true;
           alert('정보 확인이 완료되었습니다.');
           document.getElementById('student-login-container').classList.remove('hidden');
           document.getElementById('student-info-container').classList.add('hidden');
@@ -387,18 +378,16 @@
       };
     }
 
-    // "O" 버튼 함수: 확인 처리
-    function markAsCorrect(fieldName) {
-      const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
-      row.querySelectorAll('.check-buttons button').forEach(btn => {
-        btn.disabled = true;
-      });
+    /* "O" 버튼 인라인 함수: 확인 처리 */
+    function markAsCorrectInline(btn) {
+      const row = btn.closest('.info-row');
+      row.querySelectorAll('.check-buttons button').forEach(b => b.disabled = true);
       row.querySelector('.info-value').textContent += ' (확인됨)';
     }
 
-    // "X" 버튼 함수: 수정 입력 필드 표시
-    function markAsIncorrect(fieldName) {
-      const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+    /* "X" 버튼 인라인 함수: 수정 입력 필드 표시 */
+    function markAsIncorrectInline(btn) {
+      const row = btn.closest('.info-row');
       row.querySelector('.correct-info-input').classList.remove('hidden');
     }
 
@@ -550,6 +539,7 @@
       reader.readAsArrayBuffer(file);
     });
 
+    // 페이지 로드 시 데이터 자동 불러오기
     loadStudentsData();
   </script>
 </body>
