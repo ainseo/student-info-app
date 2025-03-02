@@ -169,7 +169,8 @@
     </div>
 
     <!-- 교사 모드 -->
-    <div id="teacher-mode" class="tab-content hidden">
+    <!-- teacher-mode 컨테이너의 hidden 클래스를 제거하여 탭 전환 시 표시되도록 함 -->
+    <div id="teacher-mode" class="tab-content">
       <div id="teacher-login-container" class="card">
         <h2>교사 로그인</h2>
         <form id="teacher-login-form">
@@ -235,7 +236,7 @@
       });
     });
 
-    // 교사 로그인
+    // 교사 로그인 처리
     document.getElementById('teacher-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
       const pwd = document.getElementById('teacher-password').value;
@@ -266,7 +267,6 @@
         const response = await fetch(GOOGLE_SHEETS_URL);
         studentsData = await response.json();
         console.log("불러온 학생 데이터:", studentsData);
-        // 교사 모드 업데이트
         if (!document.getElementById('teacher-login-container').classList.contains('hidden')) {
           // 아직 교사 로그인 전
         } else {
@@ -319,42 +319,36 @@
         row.className = 'info-row';
         row.dataset.field = field.key;
 
+        // "O"와 "X" 버튼을 직접 생성하여 onclick 속성으로 함수 연결
+        const correctBtn = document.createElement('button');
+        correctBtn.textContent = 'O';
+        correctBtn.className = 'correct';
+        correctBtn.onclick = () => markAsCorrect(field.key);
+
+        const incorrectBtn = document.createElement('button');
+        incorrectBtn.textContent = 'X';
+        incorrectBtn.className = 'incorrect';
+        incorrectBtn.onclick = () => markAsIncorrect(field.key);
+
         row.innerHTML = `
           <div class="info-label">${field.label}</div>
           <div class="info-value">${student[field.key] || ''}</div>
-          <div class="check-buttons">
-            <button class="correct">O</button>
-            <button class="incorrect">X</button>
-          </div>
+          <div class="check-buttons"></div>
           <div class="correct-info-input hidden">
             <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
             <button class="submit-correction" data-field="${field.key}">확인</button>
           </div>
         `;
+        row.querySelector('.check-buttons').appendChild(correctBtn);
+        row.querySelector('.check-buttons').appendChild(incorrectBtn);
+
         container.appendChild(row);
       });
 
       document.getElementById('submit-verification').classList.remove('hidden');
 
-      // X 버튼: 수정 입력 필드 표시
-      container.querySelectorAll('.incorrect').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const row = this.closest('.info-row');
-          row.querySelector('.correct-info-input').classList.remove('hidden');
-        });
-      });
-
-      // O 버튼: 확인 처리
-      container.querySelectorAll('.correct').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const row = this.closest('.info-row');
-          const fieldName = row.dataset.field;
-          markAsCorrect(fieldName);
-        });
-      });
-
       // 수정 확인 버튼: 수정값 저장
-      container.querySelectorAll('.submit-correction').forEach(btn => {
+      document.querySelectorAll('.submit-correction').forEach(btn => {
         btn.addEventListener('click', function() {
           const fieldName = this.dataset.field;
           const correctionValue = document.getElementById(`correction-${fieldName}`).value.trim();
@@ -363,11 +357,10 @@
             if (idx !== -1) {
               studentsData[idx].corrections = studentsData[idx].corrections || {};
               studentsData[idx].corrections[fieldName] = correctionValue;
-              const row = container.querySelector(`.info-row[data-field="${fieldName}"]`);
+              const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
               row.querySelector('.info-value').textContent = correctionValue + ' (수정됨)';
               row.querySelector('.correct-info-input').classList.add('hidden');
               row.querySelectorAll('.check-buttons button').forEach(b => b.disabled = true);
-              // 교사 모드 업데이트
               displayTeacherPanel();
             }
           } else {
@@ -376,10 +369,10 @@
         });
       });
 
-      // 확인 완료 버튼
+      // "확인 완료" 버튼: 최종 확인 처리 및 교사 모드 업데이트
       document.getElementById('submit-verification').onclick = function() {
         const allVerified = fields.every(f => {
-          const row = container.querySelector(`.info-row[data-field="${f.key}"]`);
+          const row = document.querySelector(`.info-row[data-field="${f.key}"]`);
           return row.querySelector('.correct').disabled;
         });
         if (allVerified) {
@@ -387,7 +380,6 @@
           document.getElementById('student-login-container').classList.remove('hidden');
           document.getElementById('student-info-container').classList.add('hidden');
           document.getElementById('student-login-form').reset();
-          // 교사 모드 업데이트
           displayTeacherPanel();
         } else {
           alert('모든 정보에 대해 O/X를 선택해주세요.');
@@ -398,11 +390,19 @@
     // "O" 버튼 함수: 확인 처리
     function markAsCorrect(fieldName) {
       const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
-      row.querySelectorAll('.check-buttons button').forEach(btn => btn.disabled = true);
+      row.querySelectorAll('.check-buttons button').forEach(btn => {
+        btn.disabled = true;
+      });
       row.querySelector('.info-value').textContent += ' (확인됨)';
     }
 
-    // 교사 모드: 전체 학생 정보를 표로 표시
+    // "X" 버튼 함수: 수정 입력 필드 표시
+    function markAsIncorrect(fieldName) {
+      const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
+      row.querySelector('.correct-info-input').classList.remove('hidden');
+    }
+
+    /* 교사 모드: 전체 학생 정보를 표로 표시 */
     function displayTeacherPanel() {
       const container = document.getElementById('teacher-info');
       let html = `
@@ -452,7 +452,7 @@
       updateVerificationStatus();
     }
 
-    // 교사 모드: verification-status 테이블 갱신
+    /* 교사 모드: verification-status 테이블 갱신 */
     function updateVerificationStatus() {
       const tbody = document.querySelector('#verification-status tbody');
       if (!tbody) return;
@@ -550,7 +550,6 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 페이지 로드 시 데이터 불러오기
     loadStudentsData();
   </script>
 </body>
