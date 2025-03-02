@@ -47,6 +47,24 @@
             border-color: #ddd;
             border-bottom-color: white;
         }
+        label, input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -113,17 +131,27 @@
         // 학생 로그인
         document.getElementById("student-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
-            const studentId = document.getElementById("student-id").value;
-            const phoneLastDigits = document.getElementById("phone-last4").value;
+            const studentIdInput = document.getElementById("student-id").value.trim();
+            const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
 
-            const student = studentsData.find(s => s.학번 === studentId && s.휴대폰번호.slice(-4) === phoneLastDigits);
-            
+            console.log("입력한 학번:", studentIdInput);
+            console.log("입력한 휴대폰 뒷자리:", phoneLastDigitsInput);
+
+            const student = studentsData.find(s => {
+                const dbId = String(s.학번).trim();
+                const dbPhone = String(s.휴대폰번호).trim();
+                console.log("DB 학번:", dbId, "DB 휴대폰번호 끝 4자리:", dbPhone.slice(-4));
+                return dbId === studentIdInput && dbPhone.slice(-4) === phoneLastDigitsInput;
+            });
+
             if (student) {
+                console.log("로그인 성공:", student);
                 displayStudentData(student);
                 document.getElementById("student-login").classList.add("hidden");
                 document.getElementById("student-info").classList.remove("hidden");
             } else {
-                alert("학생 정보를 찾을 수 없습니다.");
+                console.log("로그인 실패: 학생 정보를 찾을 수 없음");
+                alert("학생 정보를 찾을 수 없습니다. 학번과 휴대폰 뒷자리를 확인하세요.");
             }
         });
 
@@ -140,7 +168,6 @@
         document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
             const password = document.getElementById("teacher-password").value;
-
             if (password === TEACHER_PASSWORD) {
                 document.getElementById("teacher-login").classList.add("hidden");
                 document.getElementById("teacher-panel").classList.remove("hidden");
@@ -153,7 +180,7 @@
         function displayTeacherPanel() {
             const container = document.getElementById("teacher-info-container");
             container.innerHTML = studentsData.map(s => `
-                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
+                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름} | <strong>휴대폰:</strong> ${s.휴대폰번호}</p>
             `).join("");
         }
 
@@ -164,7 +191,7 @@
                 this.classList.add('active');
 
                 document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-                document.getElementById(this.dataset.tab).classList.remove('hidden');
+                document.getElementById(this.dataset.tab).classList.remove("hidden");
             });
         });
 
