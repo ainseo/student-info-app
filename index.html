@@ -1,201 +1,82 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학생 정보 확인 시스템</title>
-    <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        h1, h2 {
-            color: #333;
-        }
-        .hidden {
-            display: none;
-        }
-        .nav-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        .nav-tab {
-            padding: 10px 15px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            border-bottom: none;
-            border-radius: 4px 4px 0 0;
-            margin-right: 5px;
-        }
-        .nav-tab.active {
-            background-color: white;
-            border-color: #ddd;
-            border-bottom-color: white;
-        }
-        label, input, button {
-            display: block;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        input, button {
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>학생 정보 확인 시스템</h1>
+<script>
+    const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec";
+    const TEACHER_PASSWORD = "sai4119";
+    let studentsData = [];
 
-        <div class="nav-tabs">
-            <div class="nav-tab active" data-tab="student-login">학생 모드</div>
-            <div class="nav-tab" data-tab="teacher-login">교사 모드</div>
-        </div>
-
-        <!-- 학생 로그인 -->
-        <div id="student-login" class="tab-content active card">
-            <h2>학생 로그인</h2>
-            <form id="student-login-form">
-                <label for="student-id">학번</label>
-                <input type="text" id="student-id" required>
-                <label for="phone-last4">휴대폰 뒷자리 4자리</label>
-                <input type="text" id="phone-last4" maxlength="4" required>
-                <button type="submit">로그인</button>
-            </form>
-        </div>
-
-        <!-- 학생 정보 확인 -->
-        <div id="student-info" class="tab-content card hidden">
-            <h2>학생 정보 확인</h2>
-            <div id="info-container"></div>
-            <button id="submit-verification">확인 완료</button>
-        </div>
-
-        <!-- 교사 로그인 -->
-        <div id="teacher-login" class="tab-content card hidden">
-            <h2>교사 로그인</h2>
-            <form id="teacher-login-form">
-                <label for="teacher-password">비밀번호</label>
-                <input type="password" id="teacher-password" required>
-                <button type="submit">로그인</button>
-            </form>
-        </div>
-
-        <!-- 교사 모드 -->
-        <div id="teacher-panel" class="tab-content card hidden">
-            <h2>학생 정보 관리</h2>
-            <div id="teacher-info-container"></div>
-        </div>
-    </div>
-
-    <script>
-        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec";
-        const TEACHER_PASSWORD = "sai4119";
-        let studentsData = [];
-
-        // Google Sheets에서 학생 데이터 불러오기
-        async function loadStudentsData() {
-            try {
-                const response = await fetch(GOOGLE_SHEETS_URL);
-                studentsData = await response.json();
-                console.log("불러온 학생 데이터:", studentsData);
-            } catch (error) {
-                console.error("데이터 불러오기 오류:", error);
-            }
+    async function loadStudentsData() {
+        try {
+            const response = await fetch(GOOGLE_SHEETS_URL);
+            studentsData = await response.json();
+            console.log("불러온 학생 데이터:", studentsData);
+        } catch (error) {
+            console.error("데이터 불러오기 오류:", error);
         }
+    }
 
-        // 학생 로그인
-        document.getElementById("student-login-form").addEventListener("submit", function(e) {
-            e.preventDefault();
-            const studentIdInput = document.getElementById("student-id").value.trim();
-            const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
+    // ✅ 학생 로그인 로직 수정 (학번 + 휴대폰 뒷자리 직접 비교)
+    document.getElementById("student-login-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const studentIdInput = document.getElementById("student-id").value.trim();
+        const phoneLastDigitsInput = document.getElementById("phone-last4").value.trim();
 
-            console.log("입력한 학번:", studentIdInput);
-            console.log("입력한 휴대폰 뒷자리:", phoneLastDigitsInput);
+        console.log("입력한 학번:", studentIdInput);
+        console.log("입력한 휴대폰 뒷자리:", phoneLastDigitsInput);
 
-            const student = studentsData.find(s => {
-                const dbId = String(s.학번).trim();
-                const dbPhone = String(s.휴대폰번호).trim();
-                console.log("DB 학번:", dbId, "DB 휴대폰번호 끝 4자리:", dbPhone.slice(-4));
-                return dbId === studentIdInput && dbPhone.slice(-4) === phoneLastDigitsInput;
-            });
-
-            if (student) {
-                console.log("로그인 성공:", student);
-                displayStudentData(student);
-                document.getElementById("student-login").classList.add("hidden");
-                document.getElementById("student-info").classList.remove("hidden");
-            } else {
-                console.log("로그인 실패: 학생 정보를 찾을 수 없음");
-                alert("학생 정보를 찾을 수 없습니다. 학번과 휴대폰 뒷자리를 확인하세요.");
-            }
+        const student = studentsData.find(s => {
+            const dbId = String(s.학번).trim();
+            const dbPhoneLast4 = String(s.휴대폰뒷자리).trim(); // 🔹 휴대폰 뒷자리 열을 직접 가져옴
+            console.log("DB 학번:", dbId, "DB 휴대폰 뒷자리:", dbPhoneLast4);
+            return dbId === studentIdInput && dbPhoneLast4 === phoneLastDigitsInput;
         });
 
-        function displayStudentData(student) {
-            const container = document.getElementById("info-container");
-            container.innerHTML = `
-                <p><strong>학번:</strong> ${student.학번}</p>
-                <p><strong>이름:</strong> ${student.이름}</p>
-                <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
-            `;
+        if (student) {
+            console.log("로그인 성공:", student);
+            displayStudentData(student);
+            document.getElementById("student-login").classList.add("hidden");
+            document.getElementById("student-info").classList.remove("hidden");
+        } else {
+            console.log("로그인 실패: 학생 정보를 찾을 수 없음");
+            alert("학생 정보를 찾을 수 없습니다. 학번과 휴대폰 뒷자리를 확인하세요.");
         }
+    });
 
-        // 교사 로그인
-        document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
-            e.preventDefault();
-            const password = document.getElementById("teacher-password").value;
-            if (password === TEACHER_PASSWORD) {
-                document.getElementById("teacher-login").classList.add("hidden");
-                document.getElementById("teacher-panel").classList.remove("hidden");
-                displayTeacherPanel();
-            } else {
-                alert("비밀번호가 올바르지 않습니다.");
-            }
-        });
+    function displayStudentData(student) {
+        const container = document.getElementById("info-container");
+        container.innerHTML = `
+            <p><strong>학번:</strong> ${student.학번}</p>
+            <p><strong>이름:</strong> ${student.이름}</p>
+            <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
+        `;
+    }
 
-        function displayTeacherPanel() {
-            const container = document.getElementById("teacher-info-container");
-            container.innerHTML = studentsData.map(s => `
-                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름} | <strong>휴대폰:</strong> ${s.휴대폰번호}</p>
-            `).join("");
+    document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const password = document.getElementById("teacher-password").value;
+        if (password === TEACHER_PASSWORD) {
+            document.getElementById("teacher-login").classList.add("hidden");
+            document.getElementById("teacher-panel").classList.remove("hidden");
+            displayTeacherPanel();
+        } else {
+            alert("비밀번호가 올바르지 않습니다.");
         }
+    });
 
-        // 탭 전환 기능
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
+    function displayTeacherPanel() {
+        const container = document.getElementById("teacher-info-container");
+        container.innerHTML = studentsData.map(s => `
+            <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름} | <strong>휴대폰 뒷자리:</strong> ${s.휴대폰뒷자리}</p>
+        `).join("");
+    }
 
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-                document.getElementById(this.dataset.tab).classList.remove("hidden");
-            });
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(this.dataset.tab).classList.remove("hidden");
         });
+    });
 
-        loadStudentsData();
-    </script>
-</body>
-</html>
+    loadStudentsData();
+</script>
