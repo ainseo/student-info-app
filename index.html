@@ -29,6 +29,25 @@
         .hidden {
             display: none;
         }
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .nav-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            background-color: #eee;
+        }
+        .nav-tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom-color: white;
+        }
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -39,40 +58,18 @@
             border-radius: 5px;
             background: #fff;
         }
-        .info-label {
-            font-weight: bold;
-            flex: 1;
-        }
-        .info-value {
-            flex: 2;
-        }
-        .check-buttons {
-            flex: 1;
-            text-align: right;
-        }
-        .check-buttons button {
-            margin-left: 5px;
-            padding: 5px 10px;
-        }
-        .check-buttons .correct {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .check-buttons .incorrect {
-            background-color: #f44336;
-            color: white;
-        }
-        .correct-info-input {
-            margin-top: 10px;
-            display: none;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>학생 정보 확인 시스템</h1>
 
-        <div class="card" id="student-login">
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="student-login">학생 모드</div>
+            <div class="nav-tab" data-tab="teacher-login">교사 모드</div>
+        </div>
+
+        <div class="card tab-content active" id="student-login">
             <h2>학생 로그인</h2>
             <form id="student-login-form">
                 <label for="student-id">학번</label>
@@ -83,13 +80,13 @@
             </form>
         </div>
 
-        <div class="card hidden" id="student-info">
+        <div class="card hidden tab-content" id="student-info">
             <h2>학생 정보 확인</h2>
             <div id="info-container"></div>
             <button id="submit-verification">확인 완료</button>
         </div>
 
-        <div class="card" id="teacher-login">
+        <div class="card tab-content hidden" id="teacher-login">
             <h2>교사 로그인</h2>
             <form id="teacher-login-form">
                 <label for="teacher-password">비밀번호</label>
@@ -98,7 +95,7 @@
             </form>
         </div>
 
-        <div class="card hidden" id="teacher-panel">
+        <div class="card hidden tab-content" id="teacher-panel">
             <h2>학생 정보 관리</h2>
             <div id="teacher-info-container"></div>
         </div>
@@ -140,64 +137,40 @@
 
         function displayStudentData(student) {
             const container = document.getElementById("info-container");
-            container.innerHTML = "";
-
-            const fields = [
-                { key: "이름", label: "이름" },
-                { key: "생년월일", label: "생년월일" },
-                { key: "휴대폰번호", label: "휴대폰 번호" },
-                { key: "보호자휴대폰", label: "보호자 휴대폰 번호" },
-                { key: "주소", label: "주소" },
-                { key: "리로스쿨아이디", label: "리로스쿨 아이디" },
-                { key: "리로스쿨비밀번호", label: "리로스쿨 비밀번호" }
-            ];
-
-            fields.forEach(field => {
-                const row = document.createElement("div");
-                row.className = "info-row";
-                row.dataset.field = field.key;
-
-                row.innerHTML = `
-                    <div class="info-label">${field.label}</div>
-                    <div class="info-value">${student[field.key]}</div>
-                    <div class="check-buttons">
-                        <button class="correct">맞음</button>
-                        <button class="incorrect">틀림</button>
-                    </div>
-                    <div class="correct-info-input hidden">
-                        <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
-                        <button class="submit-correction" data-field="${field.key}">확인</button>
-                    </div>
-                `;
-
-                container.appendChild(row);
-            });
-
-            document.getElementById("submit-verification").classList.remove("hidden");
-
-            document.querySelectorAll(".incorrect").forEach(button => {
-                button.addEventListener("click", function() {
-                    this.closest(".info-row").querySelector(".correct-info-input").classList.remove("hidden");
-                });
-            });
-
-            document.querySelectorAll(".submit-correction").forEach(button => {
-                button.addEventListener("click", function() {
-                    const fieldName = this.dataset.field;
-                    const correctionValue = document.getElementById(`correction-${fieldName}`).value.trim();
-                    student[fieldName] = correctionValue;
-                });
-            });
+            container.innerHTML = `
+                <p><strong>학번:</strong> ${student.학번}</p>
+                <p><strong>이름:</strong> ${student.이름}</p>
+                <p><strong>휴대폰 번호:</strong> ${student.휴대폰번호}</p>
+            `;
         }
 
         document.getElementById("teacher-login-form").addEventListener("submit", function(e) {
             e.preventDefault();
-            if (document.getElementById("teacher-password").value === TEACHER_PASSWORD) {
+            const password = document.getElementById("teacher-password").value;
+            if (password === TEACHER_PASSWORD) {
                 document.getElementById("teacher-login").classList.add("hidden");
                 document.getElementById("teacher-panel").classList.remove("hidden");
+                displayTeacherPanel();
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
             }
+        });
+
+        function displayTeacherPanel() {
+            const container = document.getElementById("teacher-info-container");
+            container.innerHTML = studentsData.map(s => `
+                <p><strong>학번:</strong> ${s.학번} | <strong>이름:</strong> ${s.이름}</p>
+            `).join("");
+        }
+
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+                document.getElementById(this.dataset.tab).classList.remove("hidden");
+            });
         });
 
         loadStudentsData();
