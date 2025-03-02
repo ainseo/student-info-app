@@ -81,7 +81,6 @@
     .tab-content.active {
       display: block;
     }
-    /* 학생 정보 확인/수정 UI */
     .info-row {
       display: flex;
       margin-bottom: 10px;
@@ -111,11 +110,6 @@
       background-color: #f44336;
       color: white;
     }
-    .correct-info-input {
-      margin-top: 10px;
-      display: none;
-    }
-    /* 교사 모드 표 스타일 */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -159,7 +153,7 @@
             <label for="phone-last4">휴대폰 뒷자리 4자리</label>
             <input type="text" id="phone-last4" maxlength="4" required>
           </div>
-          <button type="submit">로그인</button>
+          <button type="submit">확인</button>
         </form>
       </div>
       <div class="card hidden" id="student-info-container">
@@ -185,7 +179,6 @@
 
       <div id="teacher-panel-container" class="hidden card">
         <h2>학생 정보 관리</h2>
-
         <!-- Google Sheet URL 입력 -->
         <div class="form-group">
           <label for="sheet-url">Google Sheet URL</label>
@@ -234,7 +227,7 @@
         - TEACHER_PASSWORD: 교사 비밀번호
         - studentsData: 시트에서 불러온 학생 전체 데이터
     */
-    let GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbw.../exec";
+    let GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJ.../exec";
     const TEACHER_PASSWORD = "sai4119";
     let studentsData = [];
 
@@ -248,7 +241,7 @@
       });
     });
 
-    /* 교사 모드: 교사 로그인 */
+    /* 교사 로그인 */
     document.getElementById('teacher-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
       const pwd = document.getElementById('teacher-password').value;
@@ -261,7 +254,7 @@
       }
     });
 
-    /* 교사 모드: Google Sheet URL 적용 */
+    /* Google Sheet URL 적용 */
     document.getElementById('apply-sheet-url').addEventListener('click', function() {
       const newUrl = document.getElementById('sheet-url').value.trim();
       if (newUrl === "" || !newUrl.startsWith("https://")) {
@@ -273,17 +266,16 @@
       loadStudentsData();
     });
 
-    /* Google Sheets에서 학생 데이터 불러오기 */
+    /* 학생 데이터 불러오기 */
     async function loadStudentsData() {
       try {
         const response = await fetch(GOOGLE_SHEETS_URL);
         studentsData = await response.json();
         console.log("불러온 학생 데이터:", studentsData);
-        // 교사 모드 활성화 시 자동 업데이트
+        // 교사 모드 화면이 이미 열려 있으면 업데이트
         if (!document.getElementById('teacher-login-container').classList.contains('hidden')) {
           // 아직 교사 로그인 전
         } else {
-          // 교사 로그인 후
           displayTeacherPanel();
         }
       } catch (error) {
@@ -292,16 +284,18 @@
       }
     }
 
-    /* 학생 로그인 */
+    /* 학생 로그인 처리 - 여기가 핵심 수정 부분! */
     document.getElementById('student-login-form').addEventListener('submit', function(e) {
       e.preventDefault();
-      const studentId = document.getElementById('student-id').value.trim();
-      const phoneLastDigits = document.getElementById('phone-last4').value.trim();
+      const studentIdInput = document.getElementById('student-id').value.trim();
+      const phoneLastDigitsInput = document.getElementById('phone-last4').value.trim();
 
-      // studentId & phoneLastDigits가 일치하는 학생 찾기
+      /* studentId와 phoneLastDigits 모두 문자열로 변환해서 비교 */
       const student = studentsData.find(s =>
-        s.studentId === studentId && s.phoneLastDigits === phoneLastDigits
+        String(s.studentId) === studentIdInput && 
+        String(s.phoneLastDigits) === phoneLastDigitsInput
       );
+
       if (student) {
         // 로그인 성공
         displayStudentInfo(student);
@@ -356,7 +350,7 @@
         });
       });
 
-      // "확인" 버튼 -> 수정사항 저장
+      // "확인" 버튼 -> 수정사항 저장 (로컬)
       container.querySelectorAll('.submit-correction').forEach(btn => {
         btn.addEventListener('click', function() {
           const fieldName = this.dataset.field;
@@ -364,10 +358,8 @@
           if (correctionValue !== '') {
             const idx = studentsData.findIndex(s => s.studentId === student.studentId);
             if (idx !== -1) {
-              // 수정사항 반영 (로컬)
               studentsData[idx].corrections = studentsData[idx].corrections || {};
               studentsData[idx].corrections[fieldName] = correctionValue;
-              // UI 갱신
               const row = container.querySelector(`.info-row[data-field="${fieldName}"]`);
               row.querySelector('.info-value').textContent = correctionValue + ' (수정됨)';
               row.querySelector('.correct-info-input').classList.add('hidden');
@@ -379,57 +371,27 @@
         });
       });
 
-      // "확인 완료" 버튼 -> Google Sheets 반영 (옵션)
-      document.getElementById('submit-verification').onclick = async function() {
-        // 모든 항목이 "맞음/틀림" 처리되었는지 체크
+      // "확인 완료" 버튼 -> (옵션) Google Sheets 업데이트
+      document.getElementById('submit-verification').addEventListener('click', function() {
+        // 모든 항목이 맞음/틀림 처리되었는지
         const allVerified = fields.every(f => {
           const row = container.querySelector(`.info-row[data-field="${f.key}"]`);
           return row.querySelectorAll('.check-buttons button')[0].disabled;
         });
         if (allVerified) {
-          alert('정보 확인이 완료되었습니다. (수정된 내용은 Google Sheets에 업데이트 중...)');
-          // 수정사항을 서버에 반영 (예: doPost, updateOne)
-          await saveStudentDataToSheets(studentsData.find(s => s.studentId === student.studentId));
-          
-          // 로그인 화면으로 돌아가기
+          alert('정보 확인이 완료되었습니다. (수정된 내용은 Google Sheets에 업데이트 필요)');
           document.getElementById('student-login-container').classList.remove('hidden');
           document.getElementById('student-info-container').classList.add('hidden');
           document.getElementById('student-login-form').reset();
         } else {
           alert('모든 정보에 대해 맞음/틀림을 확인해주세요.');
         }
-      };
-    }
-
-    /* (옵션) 수정사항을 Google Sheets에 반영하기 위한 POST 요청 */
-    async function saveStudentDataToSheets(student) {
-      try {
-        // student 객체에 수정된 corrections가 들어 있음
-        const response = await fetch(GOOGLE_SHEETS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "updateOne",    // Apps Script doPost()에서 처리할 모드
-            student: student
-          })
-        });
-        const result = await response.text();
-        if (result === "success") {
-          console.log("수정사항이 Google Sheets에 반영되었습니다!");
-          // 다시 불러오기
-          await loadStudentsData();
-        } else {
-          console.error("수정 반영 실패:", result);
-        }
-      } catch (error) {
-        console.error("수정 반영 중 오류:", error);
-      }
+      });
     }
 
     /* 교사 모드: 전체 학생 목록 표로 표시 */
     function displayTeacherPanel() {
       const container = document.getElementById('teacher-info');
-      // 표 구성
       let html = `
         <table style="width:100%; border-collapse:collapse;">
           <thead>
@@ -523,7 +485,7 @@
       XLSX.writeFile(wb, '학생정보_템플릿.xlsx');
     });
 
-    /* 엑셀 업로드 */
+    /* 엑셀 파일 업로드 */
     document.getElementById('upload-excel').addEventListener('click', function() {
       const fileInput = document.getElementById('excel-upload');
       const file = fileInput.files[0];
@@ -567,7 +529,6 @@
             alert('유효한 학생 데이터가 없습니다.');
             return;
           }
-          // 여기서 doPost() "appendAll" 모드로 구글시트에 반영 가능
           alert(`${newData.length}명의 학생 정보가 업로드되었습니다.`);
           loadStudentsData();
           updateVerificationStatus();
