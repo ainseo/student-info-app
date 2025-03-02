@@ -34,9 +34,7 @@
       margin-bottom: 5px;
       font-weight: bold;
     }
-    input[type="text"],
-    input[type="password"],
-    input[type="file"] {
+    input[type="text"], input[type="password"], input[type="file"] {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
@@ -54,6 +52,34 @@
     }
     button:hover {
       background-color: #45a049;
+    }
+    .hidden {
+      display: none;
+    }
+    .nav-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ddd;
+    }
+    .nav-tab {
+      padding: 10px 15px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      margin-right: 5px;
+      background-color: #eee;
+    }
+    .nav-tab.active {
+      background-color: white;
+      border-color: #ddd;
+      border-bottom-color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
     }
     .info-row {
       display: flex;
@@ -84,38 +110,6 @@
       background-color: #f44336;
       color: white;
     }
-    .hidden {
-      display: none;
-    }
-    .correct-info-input {
-      margin-top: 10px;
-      display: none;
-    }
-    .nav-tabs {
-      display: flex;
-      margin-bottom: 20px;
-      border-bottom: 2px solid #ddd;
-    }
-    .nav-tab {
-      padding: 10px 15px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      border-bottom: none;
-      border-radius: 4px 4px 0 0;
-      margin-right: 5px;
-      background-color: #eee;
-    }
-    .nav-tab.active {
-      background-color: white;
-      border-color: #ddd;
-      border-bottom-color: white;
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -142,13 +136,13 @@
     
     <!-- 탭 전환 -->
     <div class="nav-tabs">
-      <div class="nav-tab active" data-tab="student-login">학생 모드</div>
-      <div class="nav-tab" data-tab="teacher-login">교사 모드</div>
+      <div class="nav-tab active" data-tab="student-mode">학생 모드</div>
+      <div class="nav-tab" data-tab="teacher-mode">교사 모드</div>
     </div>
     
-    <!-- 학생 로그인 (초기 활성) -->
-    <div id="student-login" class="tab-content active">
-      <div class="card">
+    <!-- 학생 모드 콘텐츠 -->
+    <div id="student-mode" class="tab-content active">
+      <div class="card" id="student-login">
         <h2>학생 로그인</h2>
         <form id="student-login-form">
           <div class="form-group">
@@ -162,11 +156,7 @@
           <button type="submit">확인</button>
         </form>
       </div>
-    </div>
-    
-    <!-- 학생 정보 확인 및 수정 -->
-    <div id="student-info" class="tab-content">
-      <div class="card">
+      <div class="card hidden" id="student-info">
         <h2>학생 정보 확인</h2>
         <p>아래 정보가 올바른지 확인해주세요. 잘못된 정보가 있다면 '틀림' 버튼을 눌러 수정해주세요.</p>
         <div id="info-container">
@@ -176,71 +166,69 @@
       </div>
     </div>
     
-    <!-- 교사 로그인 -->
-    <div id="teacher-login" class="tab-content">
-      <div class="card">
-        <h2>교사 모드 로그인</h2>
-        <form id="teacher-login-form">
+    <!-- 교사 모드 콘텐츠 -->
+    <div id="teacher-mode" class="tab-content hidden">
+      <div id="teacher-login-container">
+        <div class="card">
+          <h2>교사 모드 로그인</h2>
+          <form id="teacher-login-form">
+            <div class="form-group">
+              <label for="teacher-password">비밀번호</label>
+              <input type="password" id="teacher-password" required>
+            </div>
+            <button type="submit">로그인</button>
+          </form>
+        </div>
+      </div>
+      <div id="teacher-panel-container" class="hidden">
+        <div class="card">
+          <h2>학생 정보 관리</h2>
+          <!-- Google Sheet URL 입력 -->
           <div class="form-group">
-            <label for="teacher-password">비밀번호</label>
-            <input type="password" id="teacher-password" required>
+            <label for="sheet-url">Google Sheet URL</label>
+            <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/..." style="width:80%;">
+            <button id="apply-sheet-url">적용</button>
           </div>
-          <button type="submit">로그인</button>
-        </form>
+          <div id="teacher-info-container"></div>
+          <div class="excel-template">
+            <h3>학생 정보 엑셀 양식</h3>
+            <p>아래 버튼을 클릭하여 양식을 다운로드하고, 작성 후 업로드해주세요.</p>
+            <button id="download-template">양식 다운로드</button>
+          </div>
+          <div class="form-group">
+            <label for="excel-upload">학생 정보 업로드</label>
+            <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv">
+            <button id="upload-excel" style="margin-top: 10px;">업로드</button>
+          </div>
+          <h3>학생 정보 확인 현황</h3>
+          <table id="verification-status">
+            <thead>
+              <tr>
+                <th>학번</th>
+                <th>이름</th>
+                <th>확인 상태</th>
+                <th>수정된 정보</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 동적 학생 확인 상태 -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
     
-    <!-- 교사 관리 페이지 -->
-    <div id="teacher-panel" class="tab-content">
-      <div class="card">
-        <h2>학생 정보 관리</h2>
-        <!-- Google Sheet URL 입력 -->
-        <div class="form-group">
-          <label for="sheet-url">Google Sheet URL</label>
-          <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/..." style="width:80%;">
-          <button id="apply-sheet-url">적용</button>
-        </div>
-        <div id="teacher-info-container"></div>
-        
-        <div class="excel-template">
-          <h3>학생 정보 엑셀 양식</h3>
-          <p>아래 버튼을 클릭하여 양식을 다운로드하고, 작성 후 업로드해주세요.</p>
-          <button id="download-template">양식 다운로드</button>
-        </div>
-        
-        <div class="form-group">
-          <label for="excel-upload">학생 정보 업로드</label>
-          <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv">
-          <button id="upload-excel" style="margin-top: 10px;">업로드</button>
-        </div>
-        
-        <h3>학생 정보 확인 현황</h3>
-        <table id="verification-status">
-          <thead>
-            <tr>
-              <th>학번</th>
-              <th>이름</th>
-              <th>확인 상태</th>
-              <th>수정된 정보</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 동적 학생 확인 상태 -->
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
   
   <!-- XLSX 라이브러리 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    // 초기 Google Sheets URL (교사가 변경할 수 있음)
+    // 기본 Google Sheets URL (교사가 변경 가능)
     let GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJH93izjTwmJEAY7BCDVfY9qwgsdnP4tvfJjujA3rAznQ8dKG9p73yIquTrOPE7UgV/exec";
     const TEACHER_PASSWORD = "sai4119";
     let studentsData = [];
     
-    // 탭 전환 (nav-tab와 tab-content 모두 active 클래스를 토글)
+    // 탭 전환: 학생 모드와 교사 모드
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', function() {
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -250,10 +238,22 @@
       });
     });
     
-    // 교사 모드에서 Google Sheet URL 적용
-    document.getElementById('apply-sheet-url').addEventListener('click', function() {
+    // 교사 모드: 교사 로그인 처리
+    document.getElementById('teacher-login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      if(document.getElementById('teacher-password').value === TEACHER_PASSWORD){
+        document.getElementById('teacher-login-container').classList.add('hidden');
+        document.getElementById('teacher-panel-container').classList.remove('hidden');
+        displayTeacherPanel();
+      } else {
+        alert('비밀번호가 올바르지 않습니다.');
+      }
+    });
+    
+    // 교사 모드: Google Sheet URL 적용
+    document.getElementById('apply-sheet-url').addEventListener('click', function(){
       const newUrl = document.getElementById('sheet-url').value.trim();
-      if (newUrl === "" || !newUrl.startsWith("https://")) {
+      if(newUrl === "" || !newUrl.startsWith("https://")){
         alert("올바른 Google Sheet URL을 입력해주세요.");
         return;
       }
@@ -263,34 +263,29 @@
     });
     
     // Google Sheets에서 학생 데이터 불러오기
-    async function loadStudentsData() {
+    async function loadStudentsData(){
       try {
         const response = await fetch(GOOGLE_SHEETS_URL);
         studentsData = await response.json();
         console.log("불러온 학생 데이터:", studentsData);
-        // 교사 모드 학생 목록 업데이트
-        if(document.getElementById('teacher-panel').classList.contains('active')){
+        if(document.getElementById('teacher-panel-container').classList.contains('active')){
           displayTeacherPanel();
         }
-      } catch (error) {
+      } catch (error){
         console.error("데이터 불러오기 오류:", error);
         alert("Google Sheet 데이터를 불러오는 데 오류가 발생했습니다. URL을 확인해주세요.");
       }
     }
     
     // 학생 로그인 처리
-    document.getElementById('student-login-form').addEventListener('submit', function(e) {
+    document.getElementById('student-login-form').addEventListener('submit', function(e){
       e.preventDefault();
       const studentId = document.getElementById('student-id').value.trim();
       const phoneLastDigits = document.getElementById('phone-last4').value.trim();
       
-      const student = studentsData.find(s => 
-        s.studentId === studentId && s.phoneLastDigits === phoneLastDigits
-      );
-      
-      if (student) {
+      const student = studentsData.find(s => s.studentId === studentId && s.phoneLastDigits === phoneLastDigits);
+      if(student){
         displayStudentInfo(student);
-        // 탭 전환: 학생 로그인 -> 학생 정보 확인
         document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
         document.getElementById('student-info').classList.add('active');
       } else {
@@ -299,11 +294,9 @@
     });
     
     // 학생 정보 표시 및 수정 기능
-    function displayStudentInfo(student) {
+    function displayStudentInfo(student){
       const container = document.getElementById('info-container');
       container.innerHTML = '';
-      
-      // 정보 필드 정의 (구글시트 열 순서에 따라)
       const fields = [
         { key: 'name', label: '이름' },
         { key: 'birthdate', label: '생년월일' },
@@ -313,12 +306,10 @@
         { key: 'liroId', label: '리로스쿨 아이디' },
         { key: 'liroPassword', label: '리로스쿨 비밀번호' }
       ];
-      
       fields.forEach(field => {
         const row = document.createElement('div');
         row.className = 'info-row';
         row.dataset.field = field.key;
-        
         row.innerHTML = `
           <div class="info-label">${field.label}</div>
           <div class="info-value">${student[field.key]}</div>
@@ -331,31 +322,23 @@
             <button class="submit-correction" data-field="${field.key}">확인</button>
           </div>
         `;
-        
         container.appendChild(row);
       });
-      
-      // 확인 완료 버튼 표시
       document.getElementById('submit-verification').classList.remove('hidden');
-      
-      // "틀림" 버튼 이벤트 처리 (수정 입력 필드 표시)
       document.querySelectorAll('.incorrect').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(){
           this.closest('.info-row').querySelector('.correct-info-input').classList.remove('hidden');
         });
       });
-      
-      // "확인" 버튼 이벤트 처리 (수정값 저장)
       document.querySelectorAll('.submit-correction').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(){
           const fieldName = this.dataset.field;
           const correctionValue = document.getElementById(`correction-${fieldName}`).value.trim();
-          if (correctionValue !== '') {
+          if(correctionValue !== ''){
             const idx = studentsData.findIndex(s => s.studentId === student.studentId);
-            if (idx !== -1) {
+            if(idx !== -1){
               studentsData[idx].corrections = studentsData[idx].corrections || {};
               studentsData[idx].corrections[fieldName] = correctionValue;
-              // UI 업데이트
               const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
               row.querySelector('.info-value').textContent = correctionValue + ' (수정됨)';
               row.querySelector('.correct-info-input').classList.add('hidden');
@@ -366,16 +349,13 @@
           }
         });
       });
-      
-      // 확인 완료 버튼 이벤트 처리 (여기서 Google Sheets 업데이트 연동 추가 가능)
-      document.getElementById('submit-verification').addEventListener('click', function() {
+      document.getElementById('submit-verification').addEventListener('click', function(){
         const allVerified = fields.every(field => {
           const row = document.querySelector(`.info-row[data-field="${field.key}"]`);
           return row.querySelectorAll('.check-buttons button')[0].disabled;
         });
-        if (allVerified) {
+        if(allVerified){
           alert('정보 확인이 완료되었습니다. (수정된 내용은 Google Sheets에 업데이트 필요)');
-          // 학생 로그인 화면으로 전환
           document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
           document.getElementById('student-login').classList.add('active');
           document.getElementById('student-login-form').reset();
@@ -385,20 +365,8 @@
       });
     }
     
-    // 교사 로그인 처리
-    document.getElementById('teacher-login-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      if (document.getElementById('teacher-password').value === TEACHER_PASSWORD) {
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        document.getElementById('teacher-panel').classList.add('active');
-        displayTeacherPanel();
-      } else {
-        alert('비밀번호가 올바르지 않습니다.');
-      }
-    });
-    
-    // 교사 모드에서 학생 정보 목록 및 확인 상태 표시
-    function displayTeacherPanel() {
+    // 교사 모드: 학생 정보 목록 표시
+    function displayTeacherPanel(){
       const container = document.getElementById('teacher-info-container');
       container.innerHTML = studentsData.map(s => `
         <p><strong>학번:</strong> ${s.studentId} | <strong>이름:</strong> ${s.name}</p>
@@ -406,10 +374,10 @@
       updateVerificationStatus();
     }
     
-    // 학생 확인 상태 업데이트
-    function updateVerificationStatus() {
+    // 교사 모드: 학생 확인 상태 업데이트
+    function updateVerificationStatus(){
       const tbody = document.querySelector('#verification-status tbody');
-      if (!tbody) return;
+      if(!tbody)return;
       tbody.innerHTML = '';
       studentsData.forEach(s => {
         const tr = document.createElement('tr');
@@ -417,9 +385,9 @@
         const tdName = document.createElement('td'); tdName.textContent = s.name;
         const tdStatus = document.createElement('td'); tdStatus.textContent = s.verified ? '확인 완료' : '미확인';
         const tdCorrections = document.createElement('td');
-        if (s.corrections && Object.keys(s.corrections).length > 0) {
+        if(s.corrections && Object.keys(s.corrections).length > 0){
           const ul = document.createElement('ul');
-          for (let key in s.corrections) {
+          for(let key in s.corrections){
             const li = document.createElement('li');
             li.textContent = key + ': ' + s.corrections[key];
             ul.appendChild(li);
@@ -437,7 +405,7 @@
     }
     
     // 엑셀 템플릿 다운로드
-    document.getElementById('download-template').addEventListener('click', function() {
+    document.getElementById('download-template').addEventListener('click', function(){
       const template = [
         ['학번', '이름', '생년월일', '휴대폰번호', '휴대폰 뒷자리', '보호자 휴대폰', '주소', '리로스쿨 아이디', '리로스쿨 비밀번호'],
         ['20230001', '홍길동', '2005-01-15', '010-1234-1234', '1234', '010-9876-5432', '서울시 강남구 테헤란로 123', 'hong2005', 'pass1234'],
@@ -449,17 +417,17 @@
       XLSX.writeFile(wb, '학생정보_템플릿.xlsx');
     });
     
-    // 엑셀 파일 업로드 (추가 학생 데이터 처리)
-    document.getElementById('upload-excel').addEventListener('click', function() {
+    // 엑셀 파일 업로드
+    document.getElementById('upload-excel').addEventListener('click', function(){
       const fileInput = document.getElementById('excel-upload');
       const file = fileInput.files[0];
-      if (!file) {
+      if(!file){
         alert('파일을 선택해주세요.');
         return;
       }
       const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
+      reader.onload = function(e){
+        try{
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -467,14 +435,14 @@
           const headers = jsonData[0];
           const requiredHeaders = ['학번', '이름', '생년월일', '휴대폰번호', '휴대폰 뒷자리', '보호자 휴대폰', '주소', '리로스쿨 아이디', '리로스쿨 비밀번호'];
           const missing = requiredHeaders.filter(h => !headers.includes(h));
-          if (missing.length > 0) {
+          if(missing.length > 0){
             alert(`필수 헤더 누락: ${missing.join(', ')}`);
             return;
           }
           const newData = [];
-          for (let i = 1; i < jsonData.length; i++) {
+          for(let i = 1; i < jsonData.length; i++){
             const row = jsonData[i];
-            if (!row[0]) continue;
+            if(!row[0]) continue;
             newData.push({
               studentId: String(row[headers.indexOf('학번')]),
               name: String(row[headers.indexOf('이름')]),
@@ -489,15 +457,14 @@
               corrections: {}
             });
           }
-          if (newData.length === 0) {
+          if(newData.length === 0){
             alert('유효한 학생 데이터가 없습니다.');
             return;
           }
-          // 여기서 Google Sheets에 추가하는 POST 요청을 보낼 수 있음.
           alert(`${newData.length}명의 학생 정보가 업로드되었습니다.`);
           loadStudentsData();
           updateVerificationStatus();
-        } catch (error) {
+        } catch(error){
           console.error(error);
           alert('파일 처리 중 오류 발생');
         }
