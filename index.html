@@ -81,7 +81,6 @@
     .tab-content.active {
       display: block;
     }
-    /* 학생 정보 확인/수정 UI */
     .info-row {
       display: flex;
       margin-bottom: 10px;
@@ -115,7 +114,6 @@
       margin-top: 10px;
       display: none;
     }
-    /* 교사 모드 표 스타일 */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -182,7 +180,6 @@
           <button type="submit">로그인</button>
         </form>
       </div>
-
       <div id="teacher-panel-container" class="hidden card">
         <h2>학생 정보 관리</h2>
         <!-- Google Sheet URL 입력 -->
@@ -191,21 +188,17 @@
           <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/..." style="width:80%;">
           <button id="apply-sheet-url">적용</button>
         </div>
-
         <div id="teacher-info"></div>
-
         <div class="excel-template">
           <h3>학생 정보 엑셀 양식</h3>
           <p>아래 버튼을 클릭하여 양식을 다운로드하고, 작성 후 업로드해주세요.</p>
           <button id="download-template">양식 다운로드</button>
         </div>
-
         <div class="form-group">
           <label for="excel-upload">학생 정보 업로드</label>
           <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv">
           <button id="upload-excel" style="margin-top: 10px;">업로드</button>
         </div>
-
         <h3>학생 정보 확인 현황</h3>
         <table id="verification-status">
           <thead>
@@ -227,15 +220,11 @@
   <!-- XLSX 라이브러리 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    /* 
-      전역 변수:
-        - GOOGLE_SHEETS_URL: Google Apps Script 웹앱 URL (교사가 바꿀 수 있음)
-        - TEACHER_PASSWORD: 교사 비밀번호
-        - studentsData: 시트에서 불러온 학생 전체 데이터
-    */
+    /* 전역 변수 */
     let GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwJ.../exec";
     const TEACHER_PASSWORD = "sai4119";
     let studentsData = [];
+    let currentStudent = null; // 현재 로그인한 학생 객체
 
     /* 탭 전환 */
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -278,7 +267,7 @@
         const response = await fetch(GOOGLE_SHEETS_URL);
         studentsData = await response.json();
         console.log("불러온 학생 데이터:", studentsData);
-        // 교사 모드 화면이 이미 열려 있으면 업데이트
+        // 교사 모드가 활성화되어 있으면 업데이트
         if (!document.getElementById('teacher-login-container').classList.contains('hidden')) {
           // 아직 교사 로그인 전
         } else {
@@ -296,13 +285,13 @@
       const studentIdInput = document.getElementById('student-id').value.trim();
       const phoneLastDigitsInput = document.getElementById('phone-last4').value.trim();
 
-      // studentId, phoneLastDigits 모두 문자열 변환 후 비교
       const student = studentsData.find(s =>
-        String(s.studentId) === studentIdInput && 
+        String(s.studentId) === studentIdInput &&
         String(s.phoneLastDigits) === phoneLastDigitsInput
       );
 
       if (student) {
+        currentStudent = student; // 현재 학생 저장
         displayStudentInfo(student);
         document.getElementById('student-login-container').classList.add('hidden');
         document.getElementById('student-info-container').classList.remove('hidden');
@@ -316,7 +305,6 @@
       const container = document.getElementById('student-info');
       container.innerHTML = '';
 
-      // 시트 열과 맞춰서 key를 작성
       const fields = [
         { key: 'name', label: '이름' },
         { key: 'birthdate', label: '생년월일' },
@@ -331,13 +319,12 @@
         const row = document.createElement('div');
         row.className = 'info-row';
         row.dataset.field = field.key;
-
         row.innerHTML = `
           <div class="info-label">${field.label}</div>
           <div class="info-value">${student[field.key] || ''}</div>
           <div class="check-buttons">
-            <button class="correct">O</button>   <!-- 맞음 -> O -->
-            <button class="incorrect">X</button> <!-- 틀림 -> X -->
+            <button class="correct">O</button>
+            <button class="incorrect">X</button>
           </div>
           <div class="correct-info-input hidden">
             <input type="text" id="correction-${field.key}" placeholder="올바른 ${field.label} 입력">
@@ -349,15 +336,14 @@
 
       document.getElementById('submit-verification').classList.remove('hidden');
 
-      // "X" 버튼 -> 수정 입력 필드 표시
+      // X 버튼: 수정 입력 필드 표시
       container.querySelectorAll('.incorrect').forEach(btn => {
         btn.addEventListener('click', function() {
-          const row = this.closest('.info-row');
-          row.querySelector('.correct-info-input').classList.remove('hidden');
+          this.closest('.info-row').querySelector('.correct-info-input').classList.remove('hidden');
         });
       });
 
-      // "O" 버튼 -> markAsCorrect()
+      // O 버튼: 확인 처리
       container.querySelectorAll('.correct').forEach(btn => {
         btn.addEventListener('click', function() {
           const row = this.closest('.info-row');
@@ -366,13 +352,13 @@
         });
       });
 
-      // 수정 입력 확인 버튼 -> 로컬 데이터에 corrections 반영
+      // 수정 확인 버튼: 수정값 저장 (로컬)
       container.querySelectorAll('.submit-correction').forEach(btn => {
         btn.addEventListener('click', function() {
           const fieldName = this.dataset.field;
           const correctionValue = document.getElementById(`correction-${fieldName}`).value.trim();
           if (correctionValue !== '') {
-            const idx = studentsData.findIndex(s => s.studentId === student.studentId);
+            const idx = studentsData.findIndex(s => s.studentId === currentStudent.studentId);
             if (idx !== -1) {
               studentsData[idx].corrections = studentsData[idx].corrections || {};
               studentsData[idx].corrections[fieldName] = correctionValue;
@@ -387,36 +373,37 @@
         });
       });
 
-      // "확인 완료" 버튼
-      document.getElementById('submit-verification').onclick = function() {
+      // 확인 완료 버튼: 수정 사항을 Google Sheets에 반영
+      document.getElementById('submit-verification').onclick = async function() {
         const allVerified = fields.every(f => {
           const row = container.querySelector(`.info-row[data-field="${f.key}"]`);
-          // O/X 버튼 중 O버튼이 disabled 되었다면 확인됨
-          return row.querySelectorAll('.check-buttons button')[0].disabled;
+          return row.querySelector('.correct').disabled;
         });
         if (allVerified) {
-          alert('정보 확인이 완료되었습니다. (수정된 내용은 Google Sheets에 업데이트 필요)');
+          // 수정사항을 Google Sheets에 업데이트 (POST 요청)
+          await saveStudentDataToSheets(currentStudent);
+          alert('정보 확인이 완료되었습니다. 수정 내용이 Google Sheets에 반영되었습니다.');
           document.getElementById('student-login-container').classList.remove('hidden');
           document.getElementById('student-info-container').classList.add('hidden');
           document.getElementById('student-login-form').reset();
+          // 교사 모드 업데이트
+          loadStudentsData();
         } else {
           alert('모든 정보에 대해 O/X를 선택해주세요.');
         }
       };
     }
 
-    // "O" 버튼 클릭 시 동작
+    /* "O" 버튼 함수: 확인 처리 */
     function markAsCorrect(fieldName) {
       const row = document.querySelector(`.info-row[data-field="${fieldName}"]`);
-      // O/X 버튼 모두 비활성화
       row.querySelectorAll('.check-buttons button').forEach(btn => {
         btn.disabled = true;
       });
-      // "(확인됨)" 표시 추가
       row.querySelector('.info-value').textContent += ' (확인됨)';
     }
 
-    // 교사 모드: 전체 학생 목록 표로 표시
+    /* 교사 모드: 전체 학생 목록 표로 표시 */
     function displayTeacherPanel() {
       const container = document.getElementById('teacher-info');
       let html = `
@@ -430,8 +417,8 @@
               <th>휴대폰 뒷자리</th>
               <th>보호자휴대폰</th>
               <th>주소</th>
-              <th>리로ID</th>
-              <th>리로PW</th>
+              <th>리로스쿨 아이디</th>
+              <th>리로스쿨 비밀번호</th>
               <th>확인여부</th>
               <th>수정사항</th>
             </tr>
@@ -473,12 +460,9 @@
       tbody.innerHTML = '';
       for (const s of studentsData) {
         const tr = document.createElement('tr');
-        const tdId = document.createElement('td');
-        tdId.textContent = s.studentId;
-        const tdName = document.createElement('td');
-        tdName.textContent = s.name;
-        const tdStatus = document.createElement('td');
-        tdStatus.textContent = s.verified ? '확인 완료' : '미확인';
+        const tdId = document.createElement('td'); tdId.textContent = s.studentId;
+        const tdName = document.createElement('td'); tdName.textContent = s.name;
+        const tdStatus = document.createElement('td'); tdStatus.textContent = s.verified ? '확인 완료' : '미확인';
         const tdCorrections = document.createElement('td');
         if (s.corrections && Object.keys(s.corrections).length > 0) {
           const ul = document.createElement('ul');
@@ -496,6 +480,29 @@
         tr.appendChild(tdStatus);
         tr.appendChild(tdCorrections);
         tbody.appendChild(tr);
+      }
+    }
+
+    /* 수정사항을 Google Sheets에 반영하기 위한 POST 요청 */
+    async function saveStudentDataToSheets(student) {
+      try {
+        const response = await fetch(GOOGLE_SHEETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "updateOne",
+            student: student
+          })
+        });
+        const result = await response.text();
+        if (result === "success") {
+          console.log("수정사항이 Google Sheets에 반영되었습니다!");
+          await loadStudentsData();
+        } else {
+          console.error("수정 반영 실패:", result);
+        }
+      } catch (error) {
+        console.error("수정 반영 중 오류:", error);
       }
     }
 
